@@ -102,6 +102,12 @@ npm run build
 
 3. 配置前端代理或跨域访问后端
 
+## GitHub Pages 部署
+
+项目已配置 GitHub Actions 自动部署到 GitHub Pages。
+
+访问地址：https://gearicy43.github.io/home-recipe/
+
 ## 后续规划
 
 - [ ] 用户登录体系
