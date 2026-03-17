@@ -29,11 +29,15 @@ function saveProviderConfig(config: AIProviderConfig) {
 export function ChatInput({ value, onChange, onSend, isLoading }: ChatInputProps) {
   const [showSettings, setShowSettings] = useState(false)
   const [config, setConfig] = useState<AIProviderConfig>(loadProviderConfig)
+  const [savedConfig, setSavedConfig] = useState<AIProviderConfig>(loadProviderConfig)
   const [showBaseUrl, setShowBaseUrl] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'unsaved' | 'saving'>('saved')
 
   useEffect(() => {
-    saveProviderConfig(config)
-  }, [config])
+    // 检查配置是否有未保存的更改
+    const hasChanges = JSON.stringify(config) !== JSON.stringify(savedConfig)
+    setSaveStatus(hasChanges ? 'unsaved' : 'saved')
+  }, [config, savedConfig])
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -54,6 +58,17 @@ export function ChatInput({ value, onChange, onSend, isLoading }: ChatInputProps
     setShowBaseUrl(false)
   }
 
+  const handleSave = () => {
+    setSaveStatus('saving')
+    saveProviderConfig(config)
+    setSavedConfig(config)
+    setTimeout(() => {
+      setSaveStatus('saved')
+      setShowSettings(false)
+    }, 300)
+  }
+
+  const hasChanges = saveStatus === 'unsaved'
   const hasBaseUrl = config.provider === 'openai' || config.provider === 'anthropic'
 
   return (
@@ -101,6 +116,49 @@ export function ChatInput({ value, onChange, onSend, isLoading }: ChatInputProps
 
       {showSettings && (
         <div className="mt-2 sm:mt-3 p-3 sm:p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg space-y-3 sm:space-y-4">
+          {/* 当前配置显示 */}
+          <div className="p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">当前配置</span>
+              {hasChanges && (
+                <span className="text-xs text-amber-500 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  未保存
+                </span>
+              )}
+              {saveStatus === 'saved' && !hasChanges && (
+                <span className="text-xs text-green-500 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  已保存
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-slate-500 dark:text-slate-400">服务商:</span>
+                <span className="ml-1 font-medium text-slate-700 dark:text-slate-200">{PROVIDER_LABELS[config.provider]}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-slate-400">模型:</span>
+                <span className="ml-1 font-medium text-slate-700 dark:text-slate-200 truncate block" title={config.model}>{config.model}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-slate-500 dark:text-slate-400">API Key:</span>
+                <span className="ml-1 font-mono text-slate-700 dark:text-slate-200">{config.apiKey ? `${config.apiKey.slice(0, 8)}...${config.apiKey.slice(-4)}` : '未设置'}</span>
+              </div>
+              {config.baseUrl && (
+                <div className="col-span-2">
+                  <span className="text-slate-500 dark:text-slate-400">Base URL:</span>
+                  <span className="ml-1 font-mono text-slate-700 dark:text-slate-200 truncate block" title={config.baseUrl}>{config.baseUrl}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Provider 选择 */}
           <div>
             <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5 sm:mb-2">
@@ -195,9 +253,53 @@ export function ChatInput({ value, onChange, onSend, isLoading }: ChatInputProps
             </div>
           )}
 
-          <p className="text-xs text-slate-400 leading-relaxed">
-            配置仅存储在本地浏览器中，不会上传到服务器
-          </p>
+          {/* 保存按钮 */}
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+            <button
+              onClick={() => {
+                setConfig(savedConfig)
+                setShowSettings(false)
+              }}
+              className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              取消
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!hasChanges || saveStatus === 'saving'}
+              className={`
+                px-4 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 flex items-center gap-1.5
+                ${hasChanges
+                  ? 'bg-recipe-500 text-white hover:bg-recipe-600 shadow-md'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
+                }
+              `}
+            >
+              {saveStatus === 'saving' ? (
+                <>
+                  <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  保存中...
+                </>
+              ) : hasChanges ? (
+                <>
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                  </svg>
+                  保存配置
+                </>
+              ) : (
+                <>
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  已保存
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
     </div>
