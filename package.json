@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && cp -r functions dist/",
     "dev": "vite --port 33005 --host",
     "preview": "vite preview",
     "server": "node server/index.js"
