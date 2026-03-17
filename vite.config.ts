@@ -16,6 +16,8 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, './shared'),
     },
   },
+  // GitHub Pages 需要设置基础路径
+  base: '/home-recipe/',
   build: {
     outDir: 'dist',
   },
