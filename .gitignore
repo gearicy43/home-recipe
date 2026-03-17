@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Cache
+.tanstack/
+
+# Logs
+*.log
+
+# Lock files (optional, can be committed if needed)
+# package-lock.json
