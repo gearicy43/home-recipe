@@ -1,3 +1,0 @@
-# Cloudflare Pages Functions handle /api/* routes
-# SPA fallback for all other routes
-/*    /index.html   200
