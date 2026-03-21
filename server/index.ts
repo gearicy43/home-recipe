@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
+import { Agent } from '@mariozechner/pi-agent-core'
+import { getModel } from '@mariozechner/pi-ai'
 import cors from 'cors'
 import express from 'express'
 import { AIProviderType, DEFAULT_BASE_URLS } from '../shared/types'
@@ -145,6 +147,36 @@ async function handleOpenRouterStream(req: ChatRequest, res: express.Response) {
   }
 }
 
+async function handlePiMonoStream(req: ChatRequest, res: express.Response) {
+  try {
+    const agent = new Agent({
+      initialState: {
+        systemPrompt: SYSTEM_PROMPT,
+        model: getModel('anthropic', req.model),
+      },
+    })
+
+    // 获取最后一条用户消息
+    const lastUserMessage = req.messages[req.messages.length - 1]?.content || ''
+
+    // 订阅事件流
+    const unsubscribe = agent.subscribe((event) => {
+      if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta') {
+        res.write(`data: ${JSON.stringify({ content: event.assistantMessageEvent.delta })}\n\n`)
+      }
+    })
+
+    // 发送提示并等待完成
+    await agent.prompt(lastUserMessage)
+    await agent.waitForIdle()
+    
+    unsubscribe()
+  } catch (error: any) {
+    console.error('Pi Mono API Error:', error)
+    res.write(`data: ${JSON.stringify({ error: error.message || 'Pi Mono 调用失败' })}\n\n`)
+  }
+}
+
 app.post('/api/chat', async (req, res) => {
   const { messages, provider, apiKey, model, baseUrl } = req.body as ChatRequest
 
@@ -171,6 +203,9 @@ app.post('/api/chat', async (req, res) => {
         break
       case 'openrouter':
         await handleOpenRouterStream(chatReq, res)
+        break
+      case 'pi-mono':
+        await handlePiMonoStream(chatReq, res)
         break
       default:
         res.status(400).json({ error: `不支持的服务商: ${provider}` })

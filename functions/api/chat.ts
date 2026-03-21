@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
+import { Agent } from '@mariozechner/pi-agent-core'
+import { getModel } from '@mariozechner/pi-ai'
 
 const SYSTEM_PROMPT = `你是家庭菜谱助手，帮助用户推荐菜谱和解答烹饪问题。
 
@@ -54,7 +56,7 @@ const SYSTEM_PROMPT = `你是家庭菜谱助手，帮助用户推荐菜谱和解
 - "快手菜" / "15分钟" → 按时间要求推荐
 - "多少卡路里" → 回答热量信息`
 
-type AIProviderType = 'openai' | 'anthropic' | 'openrouter'
+type AIProviderType = 'openai' | 'anthropic' | 'openrouter' | 'pi-mono'
 
 interface ChatRequest {
   messages: { role: string; content: string }[]
@@ -128,6 +130,44 @@ async function handleOpenAIStream(req: ChatRequest, baseURL?: string): Promise<R
   })
 }
 
+async function handlePiMonoStream(req: ChatRequest): Promise<ReadableStream> {
+  return new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder()
+      
+      try {
+        const agent = new Agent({
+          initialState: {
+            systemPrompt: SYSTEM_PROMPT,
+            model: getModel('anthropic', req.model),
+          },
+        })
+
+        // 获取最后一条用户消息
+        const lastUserMessage = req.messages[req.messages.length - 1]?.content || ''
+
+        // 订阅事件流
+        const unsubscribe = agent.subscribe((event) => {
+          if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta') {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: event.assistantMessageEvent.delta })}\n\n`))
+          }
+        })
+
+        // 发送提示并等待完成
+        await agent.prompt(lastUserMessage)
+        await agent.waitForIdle()
+        
+        unsubscribe()
+      } catch (error: any) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: error.message || 'Pi Mono 调用失败' })}\n\n`))
+      }
+      
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      controller.close()
+    },
+  })
+}
+
 export const onRequestPost: PagesFunction = async (context) => {
   try {
     const body = await context.request.json() as ChatRequest
@@ -160,6 +200,9 @@ export const onRequestPost: PagesFunction = async (context) => {
         break
       case 'openrouter':
         stream = await handleOpenAIStream(chatReq, 'https://openrouter.ai/api/v1')
+        break
+      case 'pi-mono':
+        stream = await handlePiMonoStream(chatReq)
         break
       default:
         return new Response(JSON.stringify({ error: `不支持的服务商: ${provider}` }), {

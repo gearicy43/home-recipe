@@ -29,7 +29,7 @@ export interface ChatMessage {
   timestamp: number
 }
 
-export type AIProviderType = 'openai' | 'anthropic' | 'openrouter'
+export type AIProviderType = 'openai' | 'anthropic' | 'openrouter' | 'pi-mono'
 
 export interface AIProviderConfig {
   provider: AIProviderType
@@ -42,6 +42,7 @@ export const DEFAULT_MODELS: Record<AIProviderType, string> = {
   openai: 'gpt-4o',
   anthropic: 'claude-3-5-sonnet-20241022',
   openrouter: 'openai/gpt-4o',
+  'pi-mono': 'claude-sonnet-4-20250514',
 }
 
 export const DEFAULT_BASE_URLS: Record<'openai' | 'anthropic', string> = {

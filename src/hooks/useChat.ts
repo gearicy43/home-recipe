@@ -8,7 +8,7 @@ function loadProviderConfig(): AIProviderConfig {
   if (raw) {
     try { return JSON.parse(raw) } catch {}
   }
-  return { provider: 'openai', apiKey: '', model: DEFAULT_MODELS.openai }
+  return { provider: 'pi-mono', apiKey: '', model: DEFAULT_MODELS['pi-mono'] }
 }
 
 export interface ChatSession {

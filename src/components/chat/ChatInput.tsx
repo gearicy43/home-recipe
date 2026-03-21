@@ -12,6 +12,7 @@ const PROVIDER_LABELS: Record<AIProviderType, string> = {
   openai: 'OpenAI',
   anthropic: 'Anthropic',
   openrouter: 'OpenRouter',
+  'pi-mono': 'Pi Mono',
 }
 
 function loadProviderConfig(): AIProviderConfig {
