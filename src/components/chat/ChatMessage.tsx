@@ -10,22 +10,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user'
   const [isExpanded, setIsExpanded] = useState(false)
 
-  // 解析消息内容，提取 JSON 格式的菜谱数据
-  const parseContent = (content: string) => {
-    const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/)
-    if (jsonMatch) {
-      try {
-        const recipe = JSON.parse(jsonMatch[1])
-        const textContent = content.replace(/```json\n[\s\S]*?\n```/, '').trim()
-        return { textContent, recipe }
-      } catch {
-        return { textContent: content, recipe: null }
-      }
-    }
-    return { textContent: content, recipe: null }
-  }
-
-  const { textContent, recipe } = parseContent(message.content)
+  // 只显示纯文本内容，不解析菜谱数据（菜谱数据由 useChat 解析后通过 recipe 字段传递）
+  const textContent = message.content.replace(/```json\n[\s\S]*?\n```/g, '').trim()
 
   // 用户消息默认折叠（如果内容较长）
   const shouldCollapse = isUser && textContent.length > 30
@@ -64,7 +50,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
           )}
         </div>
 
-        {recipe && <RecipeCard recipe={recipe} />}
+        {/* 只在消息完成且有菜谱数据时显示卡片 */}
+        {message.recipe && <RecipeCard recipe={message.recipe} />}
       </div>
     </div>
   )
